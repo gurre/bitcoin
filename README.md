@@ -1,4 +1,4 @@
-**This fork will notify on zmq during Initial block download (IBD) and when blocks are disconnected as opposed to the regular client**
+**This fork will notify on zmq during Initial block download (IBD) and when blocks are disconnected as opposed to the regular client (An if-statement has been removed).**
 
 # Bitcoin Core integration/staging tree
 
