@@ -13,6 +13,10 @@ from collections import defaultdict
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, assert_raises_rpc_error
+from test_framework.wallet_util import (
+    labels_value,
+    test_address,
+)
 
 class WalletLabelsTest(BitcoinTestFramework):
     def set_test_params(self):
@@ -29,8 +33,8 @@ class WalletLabelsTest(BitcoinTestFramework):
 
         # Note each time we call generate, all generated coins go into
         # the same address, so we call twice to get two addresses w/50 each
-        node.generate(1)
-        node.generate(101)
+        node.generatetoaddress(nblocks=1, address=node.getnewaddress(label='coinbase'))
+        node.generatetoaddress(nblocks=101, address=node.getnewaddress(label='coinbase'))
         assert_equal(node.getbalance(), 100)
 
         # there should be 2 address groups
@@ -42,8 +46,9 @@ class WalletLabelsTest(BitcoinTestFramework):
         linked_addresses = set()
         for address_group in address_groups:
             assert_equal(len(address_group), 1)
-            assert_equal(len(address_group[0]), 2)
+            assert_equal(len(address_group[0]), 3)
             assert_equal(address_group[0][1], 50)
+            assert_equal(address_group[0][2], 'coinbase')
             linked_addresses.add(address_group[0][0])
 
         # send 50 from each address to a third address not in this wallet
@@ -77,7 +82,7 @@ class WalletLabelsTest(BitcoinTestFramework):
             label.verify(node)
 
         # Check all labels are returned by listlabels.
-        assert_equal(node.listlabels(), [label.name for label in labels])
+        assert_equal(node.listlabels(), sorted(['coinbase'] + [label.name for label in labels]))
 
         # Send a transaction to each label.
         for label in labels:
@@ -151,14 +156,14 @@ class Label:
     def verify(self, node):
         if self.receive_address is not None:
             assert self.receive_address in self.addresses
-
         for address in self.addresses:
-            assert_equal(
-                node.getaddressinfo(address)['labels'][0],
-                {"name": self.name,
-                 "purpose": self.purpose[address]})
-            assert_equal(node.getaddressinfo(address)['label'], self.name)
-
+            test_address(
+                node,
+                address,
+                label=self.name,
+                labels=labels_value(name=self.name, purpose=self.purpose[address])
+             )
+        assert self.name in node.listlabels()
         assert_equal(
             node.getaddressesbylabel(self.name),
             {address: {"purpose": self.purpose[address]} for address in self.addresses})
